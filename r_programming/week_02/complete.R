@@ -20,7 +20,6 @@ complete <- function(directory, id = 1:332) {
       }
       hasNA
     }
-
     completeRowTruthVector <- apply(f,1,has.na)
 
     #...Count rows with no NA (FALSE values in the truth vector)
