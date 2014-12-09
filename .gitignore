@@ -9,3 +9,7 @@
 
 # RStudio files
 .Rproj.user/
+
+data_science
+quizzes
+!.gitignore
