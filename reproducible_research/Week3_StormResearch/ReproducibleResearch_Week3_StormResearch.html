@@ -88,49 +88,13 @@ The basic goal of this assignment is to explore the NOAA Storm Database and answ
 download.file(&quot;https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2&quot;, bzip_filename, method=&quot;curl&quot;)</code></pre>
 <p>Load file into memory for processing:</p>
 <pre class="r"><code>zz &lt;- bzfile(bzip_filename, &quot;r&quot;)
-data &lt;- read.csv(zz, header=TRUE)
-( head_data &lt;- head(data) )</code></pre>
-<pre><code>##   STATE__           BGN_DATE BGN_TIME TIME_ZONE COUNTY COUNTYNAME STATE
-## 1       1  4/18/1950 0:00:00     0130       CST     97     MOBILE    AL
-## 2       1  4/18/1950 0:00:00     0145       CST      3    BALDWIN    AL
-## 3       1  2/20/1951 0:00:00     1600       CST     57    FAYETTE    AL
-## 4       1   6/8/1951 0:00:00     0900       CST     89    MADISON    AL
-## 5       1 11/15/1951 0:00:00     1500       CST     43    CULLMAN    AL
-## 6       1 11/15/1951 0:00:00     2000       CST     77 LAUDERDALE    AL
-##    EVTYPE BGN_RANGE BGN_AZI BGN_LOCATI END_DATE END_TIME COUNTY_END
-## 1 TORNADO         0                                               0
-## 2 TORNADO         0                                               0
-## 3 TORNADO         0                                               0
-## 4 TORNADO         0                                               0
-## 5 TORNADO         0                                               0
-## 6 TORNADO         0                                               0
-##   COUNTYENDN END_RANGE END_AZI END_LOCATI LENGTH WIDTH F MAG FATALITIES
-## 1         NA         0                      14.0   100 3   0          0
-## 2         NA         0                       2.0   150 2   0          0
-## 3         NA         0                       0.1   123 2   0          0
-## 4         NA         0                       0.0   100 2   0          0
-## 5         NA         0                       0.0   150 2   0          0
-## 6         NA         0                       1.5   177 2   0          0
-##   INJURIES PROPDMG PROPDMGEXP CROPDMG CROPDMGEXP WFO STATEOFFIC ZONENAMES
-## 1       15    25.0          K       0                                    
-## 2        0     2.5          K       0                                    
-## 3        2    25.0          K       0                                    
-## 4        2     2.5          K       0                                    
-## 5        2     2.5          K       0                                    
-## 6        6     2.5          K       0                                    
-##   LATITUDE LONGITUDE LATITUDE_E LONGITUDE_ REMARKS REFNUM
-## 1     3040      8812       3051       8806              1
-## 2     3042      8755          0          0              2
-## 3     3340      8742          0          0              3
-## 4     3458      8626          0          0              4
-## 5     3412      8642          0          0              5
-## 6     3450      8748          0          0              6</code></pre>
+data &lt;- read.csv(zz, header=TRUE)</code></pre>
 <p>Create subset datasets specific to population health and economic consequence:</p>
 <pre class="r"><code>to_dollar &lt;- function(amount, code) { 
-  if (code==&quot;&quot;) {
-    amount
-  }
-  else if (code==&quot;K&quot;) {
+  #...R is by-value, so it is safe to cleanse the parameter directly
+  code &lt;- toupper(code)
+  #...Convert Code to a multiplier and compute value
+  if (code==&quot;K&quot;) {
     amount*1000
   } 
   else if (code==&quot;M&quot;) {
@@ -140,25 +104,27 @@ data &lt;- read.csv(zz, header=TRUE)
     amount*1000*1000*1000
   } 
   else {
-    stop( paste(&quot;Invalid DMG code [&quot;,x,&quot;]&quot;) )
+    #...Warn on all invalid codes and just use the amount
+    #warning( paste(&quot;Invalid Exponent code [&quot;,code,&quot;]&quot;) )
+    amount
   } 
 }
 
 health &lt;- data.frame(
-  event_type=head_data$EVTYPE, 
-  fatalities=head_data$FATALITIES, 
-  injuries=head_data$INJURIES, 
-  total_health_impact=I(head_data$FATALITIES+head_data$INJURIES)
+  event_type=data$EVTYPE, 
+  fatalities=data$FATALITIES, 
+  injuries=data$INJURIES, 
+  total_health_impact=I(data$FATALITIES+data$INJURIES)
 )
 
 economic &lt;- data.frame(
-  event_type=head_data$EVTYPE, 
-  property_dmg=head_data$PROPDMG,
-  property_dmg_exp=head_data$PROPDMGEXP,
-  crop_dmg=head_data$CROPDMG,
-  crop_dmg_exp=head_data$CROPDMGEXP,
+  event_type=data$EVTYPE, 
+  property_dmg=data$PROPDMG,
+  property_dmg_exp=data$PROPDMGEXP,
+  crop_dmg=data$CROPDMG,
+  crop_dmg_exp=data$CROPDMGEXP,
   total_economic_impact=apply( 
-    head_data[,c('PROPDMG','PROPDMGEXP','CROPDMG','CROPDMGEXP')], 
+    data[,c('PROPDMG','PROPDMGEXP','CROPDMG','CROPDMGEXP')], 
     1, 
     function(x)
       to_dollar( as.numeric(x['PROPDMG']), x['PROPDMGEXP']) 
@@ -166,6 +132,56 @@ economic &lt;- data.frame(
       to_dollar( as.numeric(x['CROPDMG']), x['CROPDMGEXP']) 
 
     ) 
+  )</code></pre>
+<p>Aggregate the impact by event type and sort for Results output:</p>
+<pre class="r"><code>#...Aggregate by store event type
+total_health_impact_by_event_type &lt;- tapply(health$total_health_impact, health$event_type, sum,  na.rm=TRUE)
+mean_health_impact_by_event_type  &lt;- tapply(health$total_health_impact, health$event_type, mean, na.rm=TRUE)
+
+total_economic_impact_by_event_type &lt;- tapply(economic$total_economic_impact, economic$event_type, sum,  na.rm=TRUE)
+mean_economic_impact_by_event_type  &lt;- tapply(economic$total_economic_impact, economic$event_type, mean, na.rm=TRUE)
+
+#...Sort decreasing
+total_health_impact_by_event_type   &lt;- sort(total_health_impact_by_event_type,   decreasing=TRUE, na.last=TRUE)
+mean_health_impact_by_event_type    &lt;- sort(mean_health_impact_by_event_type,    decreasing=TRUE, na.last=TRUE)
+
+total_economic_impact_by_event_type &lt;- sort(total_economic_impact_by_event_type, decreasing=TRUE, na.last=TRUE)
+mean_economic_impact_by_event_type  &lt;- sort(mean_economic_impact_by_event_type,  decreasing=TRUE, na.last=TRUE)
+
+#...Compute a percentage vector
+pct &lt;- function(x) {
+  round( 100*x/sum(x), 2 )
+}
+pct_total_health_impact_by_event_type   &lt;- pct(total_health_impact_by_event_type)
+pct_mean_health_impact_by_event_type    &lt;- pct(mean_health_impact_by_event_type)
+pct_total_economic_impact_by_event_type &lt;- pct(total_economic_impact_by_event_type)
+pct_mean_economic_impact_by_event_type  &lt;- pct(mean_economic_impact_by_event_type)
+
+
+#...Glue this together for easy access in Results
+ns &lt;- function(x, els=10) {
+  toupper( names(head(x,els)) )
+}
+vs &lt;- function(x, els=10, precision=2) {
+  as.vector(round(head(x,els),precision))
+}
+results &lt;- data.frame(
+  top_10_total_health_impact_name=ns(total_health_impact_by_event_type),
+  top_10_total_health_impact_val=vs(total_health_impact_by_event_type),
+  top_10_pct_total_health_impact_val=vs(pct_total_health_impact_by_event_type),
+
+  top_10_mean_health_impact_name=ns(mean_health_impact_by_event_type),
+  top_10_mean_health_impact_val=vs(mean_health_impact_by_event_type),
+  top_10_pct_mean_health_impact_val=vs(pct_mean_health_impact_by_event_type),
+
+  top_10_total_economic_impact_name=ns(total_economic_impact_by_event_type),
+  top_10_total_economic_impact_val=vs(total_economic_impact_by_event_type),
+  top_10_pct_total_economic_impact_val=vs(pct_total_economic_impact_by_event_type),
+
+  top_10_mean_economic_impact_name=ns(mean_economic_impact_by_event_type),
+  top_10_mean_economic_impact_val=vs(mean_economic_impact_by_event_type),
+  top_10_pct_mean_economic_impact_val=vs(pct_mean_economic_impact_by_event_type)
+
   )</code></pre>
 </div>
 </div>
@@ -181,8 +197,158 @@ Your analyis must have no more than three figures. Figures may have multiple plo
 You must show all your code for the work in your analysis document. This may make the document a bit verbose, but that is okay. In general, you should ensure that echo = TRUE for every code chunk (this is the default setting in knitr).
 -->
 
+<div id="health-impact-summary" class="section level2">
+<h2>Health Impact Summary</h2>
+<div id="top-10-weather-event-types-by-total-health-impact-persons" class="section level3">
+<h3>Top 10 Weather Event Types by Total Health Impact (Persons)</h3>
+<pre class="r"><code>library(knitr)
 
-
+d &lt;-  data.frame(
+  &quot;Type&quot;=results$top_10_total_health_impact_name, 
+  &quot;Impact&quot;=results$top_10_total_health_impact_val, 
+  &quot;Percentage&quot;=results$top_10_pct_total_health_impact_val
+  )
+kable(
+  d, 
+  format=&quot;markdown&quot;
+  )</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Type</th>
+<th align="right">Impact</th>
+<th align="right">Percentage</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">TORNADO</td>
+<td align="right">96979</td>
+<td align="right">62.30</td>
+</tr>
+<tr class="even">
+<td align="left">EXCESSIVE HEAT</td>
+<td align="right">8428</td>
+<td align="right">5.41</td>
+</tr>
+<tr class="odd">
+<td align="left">TSTM WIND</td>
+<td align="right">7461</td>
+<td align="right">4.79</td>
+</tr>
+<tr class="even">
+<td align="left">FLOOD</td>
+<td align="right">7259</td>
+<td align="right">4.66</td>
+</tr>
+<tr class="odd">
+<td align="left">LIGHTNING</td>
+<td align="right">6046</td>
+<td align="right">3.88</td>
+</tr>
+<tr class="even">
+<td align="left">HEAT</td>
+<td align="right">3037</td>
+<td align="right">1.95</td>
+</tr>
+<tr class="odd">
+<td align="left">FLASH FLOOD</td>
+<td align="right">2755</td>
+<td align="right">1.77</td>
+</tr>
+<tr class="even">
+<td align="left">ICE STORM</td>
+<td align="right">2064</td>
+<td align="right">1.33</td>
+</tr>
+<tr class="odd">
+<td align="left">THUNDERSTORM WIND</td>
+<td align="right">1621</td>
+<td align="right">1.04</td>
+</tr>
+<tr class="even">
+<td align="left">WINTER STORM</td>
+<td align="right">1527</td>
+<td align="right">0.98</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="top-10-weather-event-types-by-total-economic-impact-billions" class="section level3">
+<h3>Top 10 Weather Event Types by Total Economic Impact (Billions)</h3>
+<pre class="r"><code>d &lt;-  data.frame(
+  &quot;Type&quot;=results$top_10_total_economic_impact_name, 
+  &quot;Impact&quot;=round(results$top_10_total_economic_impact_val/(1000*1000*1000),2), 
+  &quot;Percentage&quot;=results$top_10_pct_total_economic_impact_val
+  )
+kable(
+  d, 
+  format=&quot;markdown&quot;,
+  padding=2
+  )</code></pre>
+<table>
+<thead>
+<tr class="header">
+<th align="left">Type</th>
+<th align="right">Impact</th>
+<th align="right">Percentage</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">FLOOD</td>
+<td align="right">150.32</td>
+<td align="right">31.55</td>
+</tr>
+<tr class="even">
+<td align="left">HURRICANE/TYPHOON</td>
+<td align="right">71.91</td>
+<td align="right">15.09</td>
+</tr>
+<tr class="odd">
+<td align="left">TORNADO</td>
+<td align="right">57.35</td>
+<td align="right">12.04</td>
+</tr>
+<tr class="even">
+<td align="left">STORM SURGE</td>
+<td align="right">43.32</td>
+<td align="right">9.09</td>
+</tr>
+<tr class="odd">
+<td align="left">HAIL</td>
+<td align="right">18.76</td>
+<td align="right">3.94</td>
+</tr>
+<tr class="even">
+<td align="left">FLASH FLOOD</td>
+<td align="right">17.56</td>
+<td align="right">3.69</td>
+</tr>
+<tr class="odd">
+<td align="left">DROUGHT</td>
+<td align="right">15.02</td>
+<td align="right">3.15</td>
+</tr>
+<tr class="even">
+<td align="left">HURRICANE</td>
+<td align="right">14.61</td>
+<td align="right">3.07</td>
+</tr>
+<tr class="odd">
+<td align="left">RIVER FLOOD</td>
+<td align="right">10.15</td>
+<td align="right">2.13</td>
+</tr>
+<tr class="even">
+<td align="left">ICE STORM</td>
+<td align="right">8.97</td>
+<td align="right">1.88</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 </div>
 
 

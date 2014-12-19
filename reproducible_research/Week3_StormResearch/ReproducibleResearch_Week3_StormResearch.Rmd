@@ -29,21 +29,21 @@ The basic goal of this assignment is to explore the NOAA Storm Database and answ
 ##Load Data for processing
 
 Download file to ensure reproducibility:
-```{r download, cache=FALSE}
+```{r download, cache=TRUE}
 bzip_filename <- "storm_data.csv.bz2"
 download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", bzip_filename, method="curl")
 
 ```
 
 Load file into memory for processing:
-```{r load, cache=FALSE}
+```{r load, cache=TRUE}
 zz <- bzfile(bzip_filename, "r")
 data <- read.csv(zz, header=TRUE)
 
 ```
 
 Create subset datasets specific to population health and economic consequence:
-```{r subset, cache=FALSE}
+```{r subset, cache=TRUE}
 to_dollar <- function(amount, code) { 
   #...R is by-value, so it is safe to cleanse the parameter directly
   code <- toupper(code)
@@ -59,7 +59,7 @@ to_dollar <- function(amount, code) {
   } 
   else {
     #...Warn on all invalid codes and just use the amount
-    warning( paste("Invalid Exponent code [",code,"]") )
+    #warning( paste("Invalid Exponent code [",code,"]") )
     amount
   } 
 }
@@ -91,7 +91,7 @@ economic <- data.frame(
 ```
 
 Aggregate the impact by event type and sort for Results output:
-```{r aggregate, cache=FALSE}
+```{r aggregate, cache=TRUE}
 #...Aggregate by store event type
 total_health_impact_by_event_type <- tapply(health$total_health_impact, health$event_type, sum,  na.rm=TRUE)
 mean_health_impact_by_event_type  <- tapply(health$total_health_impact, health$event_type, mean, na.rm=TRUE)
@@ -159,48 +159,26 @@ You must show all your code for the work in your analysis document. This may mak
 
 ## Health Impact Summary
 
-<!--
-` ``{r output, cache=FALSE}
-#...This approach was learned from: http://stackoverflow.com/questions/11774703/adding-text-to-a-grid-table-plot
-pretty_table <- function(d, title="", footnote="") {
-  library(gridExtra)
-  table <- tableGrob(d)
-  
-  grid.newpage()
-  h <- grobHeight(table)
-  w <- grobWidth(table)
-  title <- textGrob(title, y=unit(0.5,"npc") + 0.5*h, vjust=0, gp=gpar(fontsize=20))
-  footnote <- textGrob(footnote, 
-                       x=unit(0.5,"npc") - 0.5*w,
-                       y=unit(0.5,"npc") - 0.5*h, 
-                      vjust=1, hjust=0,gp=gpar( fontface="italic"))
-  gt <- gTree(children=gList(table, title, footnote))
-  grid.draw(gt)
-}
+###Top 10 Weather Event Types by Total Health Impact (Persons)
+```{r output_health, cache=TRUE}
+library(knitr)
 
 d <-  data.frame(
-  "Event Type"=results$top_10_total_health_impact_name, 
-  "Total Impact"=results$top_10_total_health_impact_val, 
-  "Percentage Overall"=results$top_10_pct_total_health_impact_val
+  "Type"=results$top_10_total_health_impact_name, 
+  "Impact"=results$top_10_total_health_impact_val, 
+  "Percentage"=results$top_10_pct_total_health_impact_val
   )
-pretty_table(
-  d, 
-  "Top 10 Weather Event Types by Total Health Impact", 
-  "* Total Impact expressed as whole number of people injured or killed"
-  )
+kable(d, format="markdown")
 
+```
+
+###Top 10 Weather Event Types by Total Economic Impact (Billions)
+```{r output_economic, cache=TRUE}
 d <-  data.frame(
-  "Event Type"=results$top_10_total_economic_impact_name, 
-  "Total Impact"=round(results$top_10_total_economic_impact_val/(1000*1000*1000),2), 
-  "Percentage Overall"=results$top_10_pct_total_economic_impact_val
+  "Type"=results$top_10_total_economic_impact_name, 
+  "Impact"=round(results$top_10_total_economic_impact_val/(1000*1000*1000),2), 
+  "Percentage"=results$top_10_pct_total_economic_impact_val
   )
-pretty_table(
-  d, 
-  "Top 10 Weather Event Types by Total Economic Impact",
-  "* Total Impact expressed in Billions"
-  )
+kable(d, format="markdown")
 
-
-
-`` `
--->
+```
