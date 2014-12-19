@@ -1,0 +1,206 @@
+---
+title: 'Reproducible Research, Week 3: Storm Data Research'
+author: "Craig Rowley"
+date: "December 17, 2014"
+output: html_document
+---
+
+#Synopsis
+<!--
+Immediately after the title, there should be a synopsis which describes and summarizes your analysis in at most 10 complete sentences.
+-->
+The following data analysis addresses the following questions for Extreme Weather Events in the United States:
+
+- Which types of events are most harmful with respect to population health?
+- Which types of events have the greatest economic consequences?
+
+TBD :: Summary
+
+
+#Data Processing 
+<!--
+which describes (in words and code) how the data were loaded into R and processed for analysis. In particular, your analysis must start from the raw CSV file containing the data. You cannot do any preprocessing outside the document. If preprocessing is time-consuming you may consider using the cache = TRUE option for certain code chunks.
+
+Assignment
+
+The basic goal of this assignment is to explore the NOAA Storm Database and answer some basic questions about severe weather events. You must use the database to answer the questions below and show the code for your entire analysis. Your analysis can consist of tables, figures, or other summaries. You may use any R package you want to support your analysis.
+-->
+
+##Load Data for processing
+
+Download file to ensure reproducibility:
+```{r download, cache=FALSE}
+bzip_filename <- "storm_data.csv.bz2"
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2", bzip_filename, method="curl")
+
+```
+
+Load file into memory for processing:
+```{r load, cache=FALSE}
+zz <- bzfile(bzip_filename, "r")
+data <- read.csv(zz, header=TRUE)
+
+```
+
+Create subset datasets specific to population health and economic consequence:
+```{r subset, cache=FALSE}
+to_dollar <- function(amount, code) { 
+  #...R is by-value, so it is safe to cleanse the parameter directly
+  code <- toupper(code)
+  #...Convert Code to a multiplier and compute value
+  if (code=="K") {
+    amount*1000
+  } 
+  else if (code=="M") {
+    amount*1000*1000
+  } 
+  else if (code=="B") {
+    amount*1000*1000*1000
+  } 
+  else {
+    #...Warn on all invalid codes and just use the amount
+    warning( paste("Invalid Exponent code [",code,"]") )
+    amount
+  } 
+}
+
+health <- data.frame(
+  event_type=data$EVTYPE, 
+  fatalities=data$FATALITIES, 
+  injuries=data$INJURIES, 
+  total_health_impact=I(data$FATALITIES+data$INJURIES)
+)
+
+economic <- data.frame(
+  event_type=data$EVTYPE, 
+  property_dmg=data$PROPDMG,
+  property_dmg_exp=data$PROPDMGEXP,
+  crop_dmg=data$CROPDMG,
+  crop_dmg_exp=data$CROPDMGEXP,
+  total_economic_impact=apply( 
+    data[,c('PROPDMG','PROPDMGEXP','CROPDMG','CROPDMGEXP')], 
+    1, 
+    function(x)
+      to_dollar( as.numeric(x['PROPDMG']), x['PROPDMGEXP']) 
+        +
+      to_dollar( as.numeric(x['CROPDMG']), x['CROPDMGEXP']) 
+
+    ) 
+  )
+
+```
+
+Aggregate the impact by event type and sort for Results output:
+```{r aggregate, cache=FALSE}
+#...Aggregate by store event type
+total_health_impact_by_event_type <- tapply(health$total_health_impact, health$event_type, sum,  na.rm=TRUE)
+mean_health_impact_by_event_type  <- tapply(health$total_health_impact, health$event_type, mean, na.rm=TRUE)
+
+total_economic_impact_by_event_type <- tapply(economic$total_economic_impact, economic$event_type, sum,  na.rm=TRUE)
+mean_economic_impact_by_event_type  <- tapply(economic$total_economic_impact, economic$event_type, mean, na.rm=TRUE)
+
+#...Sort decreasing
+total_health_impact_by_event_type   <- sort(total_health_impact_by_event_type,   decreasing=TRUE, na.last=TRUE)
+mean_health_impact_by_event_type    <- sort(mean_health_impact_by_event_type,    decreasing=TRUE, na.last=TRUE)
+
+total_economic_impact_by_event_type <- sort(total_economic_impact_by_event_type, decreasing=TRUE, na.last=TRUE)
+mean_economic_impact_by_event_type  <- sort(mean_economic_impact_by_event_type,  decreasing=TRUE, na.last=TRUE)
+
+#...Compute a percentage vector
+pct <- function(x) {
+  round( 100*x/sum(x), 2 )
+}
+pct_total_health_impact_by_event_type   <- pct(total_health_impact_by_event_type)
+pct_mean_health_impact_by_event_type    <- pct(mean_health_impact_by_event_type)
+pct_total_economic_impact_by_event_type <- pct(total_economic_impact_by_event_type)
+pct_mean_economic_impact_by_event_type  <- pct(mean_economic_impact_by_event_type)
+
+
+#...Glue this together for easy access in Results
+ns <- function(x, els=10) {
+  toupper( names(head(x,els)) )
+}
+vs <- function(x, els=10, precision=2) {
+  as.vector(round(head(x,els),precision))
+}
+results <- data.frame(
+  top_10_total_health_impact_name=ns(total_health_impact_by_event_type),
+  top_10_total_health_impact_val=vs(total_health_impact_by_event_type),
+  top_10_pct_total_health_impact_val=vs(pct_total_health_impact_by_event_type),
+
+  top_10_mean_health_impact_name=ns(mean_health_impact_by_event_type),
+  top_10_mean_health_impact_val=vs(mean_health_impact_by_event_type),
+  top_10_pct_mean_health_impact_val=vs(pct_mean_health_impact_by_event_type),
+
+  top_10_total_economic_impact_name=ns(total_economic_impact_by_event_type),
+  top_10_total_economic_impact_val=vs(total_economic_impact_by_event_type),
+  top_10_pct_total_economic_impact_val=vs(pct_total_economic_impact_by_event_type),
+
+  top_10_mean_economic_impact_name=ns(mean_economic_impact_by_event_type),
+  top_10_mean_economic_impact_val=vs(mean_economic_impact_by_event_type),
+  top_10_pct_mean_economic_impact_val=vs(pct_mean_economic_impact_by_event_type)
+
+  )
+
+```
+
+
+
+#Results
+<!--
+in which your results are presented.
+
+The analysis document must have at least one figure containing a plot.
+
+Your analyis must have no more than three figures. Figures may have multiple plots in them (i.e. panel plots), but there cannot be more than three figures total.
+
+You must show all your code for the work in your analysis document. This may make the document a bit verbose, but that is okay. In general, you should ensure that echo = TRUE for every code chunk (this is the default setting in knitr).
+-->
+
+## Health Impact Summary
+
+<!--
+` ``{r output, cache=FALSE}
+#...This approach was learned from: http://stackoverflow.com/questions/11774703/adding-text-to-a-grid-table-plot
+pretty_table <- function(d, title="", footnote="") {
+  library(gridExtra)
+  table <- tableGrob(d)
+  
+  grid.newpage()
+  h <- grobHeight(table)
+  w <- grobWidth(table)
+  title <- textGrob(title, y=unit(0.5,"npc") + 0.5*h, vjust=0, gp=gpar(fontsize=20))
+  footnote <- textGrob(footnote, 
+                       x=unit(0.5,"npc") - 0.5*w,
+                       y=unit(0.5,"npc") - 0.5*h, 
+                      vjust=1, hjust=0,gp=gpar( fontface="italic"))
+  gt <- gTree(children=gList(table, title, footnote))
+  grid.draw(gt)
+}
+
+d <-  data.frame(
+  "Event Type"=results$top_10_total_health_impact_name, 
+  "Total Impact"=results$top_10_total_health_impact_val, 
+  "Percentage Overall"=results$top_10_pct_total_health_impact_val
+  )
+pretty_table(
+  d, 
+  "Top 10 Weather Event Types by Total Health Impact", 
+  "* Total Impact expressed as whole number of people injured or killed"
+  )
+
+d <-  data.frame(
+  "Event Type"=results$top_10_total_economic_impact_name, 
+  "Total Impact"=round(results$top_10_total_economic_impact_val/(1000*1000*1000),2), 
+  "Percentage Overall"=results$top_10_pct_total_economic_impact_val
+  )
+pretty_table(
+  d, 
+  "Top 10 Weather Event Types by Total Economic Impact",
+  "* Total Impact expressed in Billions"
+  )
+
+
+
+`` `
+-->
