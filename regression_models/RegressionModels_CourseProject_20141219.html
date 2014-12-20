@@ -94,13 +94,22 @@ coef(lm_at); coef(lm_mt)</code></pre>
 <li>Weight may have colinearity with issues with Gear count, Transmission type, and Rear-axle ratio</li>
 <li>Engine Displacement may have correlation</li>
 </ul>
-<p>Thoughts on Coefficients (grain of salt required - this is a kitchen sink model, after all) :</p>
+<pre class="r"><code>ks&lt;-lm(mpg~.,mtcars); sort(coef(ks),decreasing=TRUE); sqrt(vif(ks))</code></pre>
+<pre><code>## (Intercept)          am        qsec        drat        gear          vs 
+## 12.30337416  2.52022689  0.82104075  0.78711097  0.65541302  0.31776281 
+##        disp          hp         cyl        carb          wt 
+##  0.01333524 -0.02148212 -0.11144048 -0.19941925 -3.71530393</code></pre>
+<pre><code>##      cyl     disp       hp     drat       wt     qsec       vs       am 
+## 3.920948 4.649757 3.135608 1.837014 3.894212 2.743712 2.228424 2.156035 
+##     gear     carb 
+## 2.314617 2.812249</code></pre>
+<p>Thoughts on Kitchen Sink model Coefficients (above):</p>
 <ul>
-<li>Increased Weight, Carburetor count, and Horsepower result in less MPG (matches intuition)</li>
+<li>Increased Weight, Carburetor count, Cylinder count, and Horsepower result in less MPG (matches intuition)</li>
 <li>Increased Displacement, Straight engine, More gears, Rear axle ratio, and Manual transmission result in higher MPG (matches intuition)</li>
-<li>The coefficients of Quarter-mile time and Cylinders do “not” match intuition as both should likely have negative impact on MPG</li>
+<li>The coefficient of Quarter-mile time does “not” match intuition as faster acceleration should have negative impact on MPG</li>
 </ul>
-<p>Thoughts on Colinearity :</p>
+<p>Thoughts on Colinearity (above) :</p>
 <ul>
 <li>Variance inflation factors all reasonably high, indicating problems (we expect this for a kitchen sink model)</li>
 <li>Weight is correlated with most items on the list, and we find that it has Heteroskedascity issues with mpg (see Appendix)</li>
