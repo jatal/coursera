@@ -1,36 +1,35 @@
 ---
-title: "RegressionModels_CourseProject"
+title: "Coursera: Regression Models Course Project"
 author: "Craig Rowley"
 date: "December 19, 2014"
-output: html_document
+output: pdf_document
 ---
 
-# Original Assignment text
+# Executive Summary
 
-##Context
+I work for Motor Trend (MT), a magazine about the automobile industry. Looking at a data set of a collection of cars, MT is interested in exploring the relationship between vehicle attributes and miles per gallon (MPG).  Two specific areas (below) are summarized for you, followed by a detailed explanation of our conclusions.
 
-You work for Motor Trend, a magazine about the automobile industry. Looking at a data set of a collection of cars, they are interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome). They are particularly interested in the following two questions:
+### Is an automatic or manual transmission better for MPG?
 
-- Question 1 :: “Is an automatic or manual transmission better for MPG”
-- Question 2 :: "Quantify the MPG difference between automatic and manual transmissions"
+Our analysis shows that a manual transmission correlates with increased fuel efficiency. Transmission alone is not the best way to increase fuel efficiency.  Here are some other possibilities discovered in the data.
 
-##Approach
+1) The number of cylinders in a car may have more impact.  A 4-cylinder car can commonly have up to 10 mpg increase over an 8-cylinder vehicle.  Average MPG ranges between 15 and 26 mpg for highest and lowest cylinder counts, respectively.  
+2) Combining an Inline-engine and fewer Carbuerators with a Manual tranmission may also help increase MPG.  On average, these cars may get up to 29 MPG, with typical manual transmissions .  Toyota Corolla, Fiat, and Datsun do well here.
 
-Model Discovery and Selection)
+### Quantify the MPG difference between automatic and manual transmissions.
 
-- EDA and Univariate fits to discover any heteroskedasticity (HSK) issues
-- Baseline "kitchen sink" model with Removal of HSK vars
-- Simple Multivariate (n-Continuous + 1-Categorical)
-- Select of maximum R^2
+Using a model that considers only engine type (V or Inline) and the number of Carbuerators, we can quantify the mpg increase simply by choosing a manual transmission.  If we train the same model on two mutually exclusive data sets (automatic versus manual transmission), we see that a *manual transmission get more than 7 mpg better fuel efficiency*.  Switching to an Inline engine has a more positive effect on automatics (+4.34 mpg), but that is insufficient to overtake the manual transmission.  In fact, our model suggests that a manual transmission could opt for more power by switching to a V-engine and dual Carbs and still likely outperform the fuel efficiency of the average automatic (if they weren't racing or hauling loads).
 
-Answer questions)
+```{r q2, cache=TRUE}
+at <- mtcars[mtcars$am==0,c("mpg","vs","carb")]; mt <- mtcars[mtcars$am==1,c("mpg","vs","carb")]
+lm_at <- lm(mpg ~ ., at); lm_mt <- lm(mpg ~ ., mt)
+coef(lm_at); coef(lm_mt)
 
-- Follow hunger example for comparing two populations (manual and automatic transmission)
+```
 
+\newpage
 
-
-
-# Exploratory Data Analysis
+# Model Design
 
 ##Initialize data set and display some standard EDA
 
@@ -51,182 +50,123 @@ Thoughts on Coefficients (grain of salt required - this is a kitchen sink model,
 Thoughts on Colinearity :
 
 - Variance inflation factors all reasonably high, indicating problems (we expect this for a kitchen sink model)
-- Weight is correlated with most items on the list
+- Weight is correlated with most items on the list, and we find that it has Heteroskedascity issues with mpg (see Appendix)
 
 
-```{r init_eda, cache=TRUE}
+```{r init_eda, cache=TRUE, echo=FALSE}
 data(mtcars)
-summary(mtcars)
 
 #...Visually show correlation
 library(corrgram)
+par(mfrow=c(1,1),mar=c(10,10,10,10))
 corrgram(mtcars, order=TRUE, lower.panel=panel.shade, upper.panel=panel.pts, text.panel=panel.txt, main="")
-#...Numerically show most correlated
-sort( cor(mtcars)[,1] )
-#...Baseline "kitchen sink" model 
-fit <- lm(mpg ~ ., mtcars)
-sort(fit$coefficients)
-#...Investigate Colinearity
-library(car)
-sqrt( vif(fit) )
-#...Use Correlation to investigate possible colinearity causes
-sort(abs(cor(mtcars)["wt",]),decreasing=TRUE)
 ```
 
-##Understand the data available to us
+\newpage
+#Appendix: Exploratory Data Analysis (output grossly reduced to meet 5 page requirement)
 
-###mpg ::	Miles/(US) gallon
+Omitted Variables (due to 5-page limit) :: disp, drat, hp, qsec, gear
+
+## Critical Variables
+
+####mpg ::	Miles/(US) gallon
 
 Our Dependent Variable.
 
-###cyl :: Number of cylinders
+####cyl :: Number of cylinders
 
-Larger, more powerful vehicles typically have more cylinders.  More cylinders typically means more fuel-per-second consumed in modern cars (and more horsepower).  
-
-Hypothesis:
-
-- Number of cyliders will have negative correlation with MPG
-- cyl will correlate with horsepower
+Larger, more powerful vehicles typically have more cylinders.  More cylinders typically means more fuel-per-second consumed in modern cars (and more horsepower), but have a negative impact on mpg.  
 
 ```{r eda_cyl, cache=TRUE}
-#...Look at some broad correlation
-#...Convert cylinder to factor
-mtcars$cyl <- factor(mtcars$cyl)
 #...Model and output interesting EDA
-fit <- lm(mpg ~ cyl -1, mtcars)
-summary(fit)
-par(mfrow=c(2,2))
-plot(fit, which=c(1,2))
-plot(mtcars$cyl,mtcars$mpg)
-
-
+fit <- lm(mpg ~ cyl, mtcars)
+summary(fit)$r.squared
 ```
 
-###disp :: Displacement (cu.in.)
+####wt :: Weight (lb/1000)
 
-Engine displacement is the volume swept by all the pistons inside the cylinders of a reciprocating engine in a single movement from top dead centre (TDC) to bottom dead centre (BDC). - Wikipedia
-
-###hp :: Gross horsepower
-
-
-
-###drat :: Rear axle ratio
-
-\# of revolutions the Transmission will make to turn the rear axle (wheel) one time.
-- Hypothesis: the more turns, the more potential friction, so less turns should have higher mpg
-- Observations: Below shows that drat may be a good regressor as Residuals have approximately a zero mean, our qq-plot shows good relationship, our student suggests there may be an outlier or two, and not significant cooks distance.
-
-Some Research:
-“For typical combined city/highway and city (stop and go) driving), fuel economy is insensitive to final drive ratio,” says Clark.  Optional final drive ratios do have an impact on typical highway driving (steady state driving above 60 mph).”
-“Speed, acceleration, loading and maintenance all impact fuel economy more than final-drive ratio,” says Clark. “For example, driving 10mph faster on the highway can reduce fuel economy by up to 4mpg.”
-
-- http://www.hardworkingtrucks.com/understanding-axle-ratios/
-
-
-```{r eda_drat, cache=TRUE}
-fit <- lm(mpg ~ drat, mtcars)
-par(mfrow=c(2,2))
-plot(fit)
-par(mfrow=c(1,1))
-plot(mtcars$drat,mtcars$mpg)
-abline(fit)
-summary(fit)
-```
-
-###wt :: Weight (lb/1000)
-
-Weight of vehicle expressed in units of 1k lbs
-
-- Hypothesis: Newton's first law says that the force required to accelerate a vehicle is proportional to its mass, so a weight should have a negative correlation with mpg.
-- Observations: Weight residual plot shows non-random U-shape, QQ plot indicates light tails
-- Conclusion: a linear model based on weight alone is innappropriate
+Weight of vehicle expressed in units of 1k lbs.  Note that Weight's residual plot shows non-random U-shape (i.e. Heteroskedasticity)
 
 ```{r eda_wt, cache=TRUE}
 fit <- lm(mpg ~ wt, mtcars)
-par(mfrow=c(2,2))
-plot(fit)
+par(mfrow=c(1,2),mar=c(0,5,15,0))
+plot(fit,which=c(1,2))
 ```
 
+####am :: Transmission (0 = automatic, 1 = manual)
 
-###qsec :: 1/4 mile time
-
-
-
-###vs :: V/S (0 = V-engine, 1 = Straight)
-
-V or Straight-engine. 
-
-
-###am :: Transmission (0 = automatic, 1 = manual)
-
-Our required regressor for Question 2.
-
-Research:
-"In our tests, we've found that in some cars a manual transmission can improve gas mileage by a significant 2 to 5 mpg, compared with an automatic"
-"Manual transmissions often can also improve acceleration, sometimes significantly. That can be a welcome benefit with a smaller engine"
-" In a few cases, however, the latest automatic-transmission designs, including six-speed automatics, actually surpass their manual counterparts."
-
-- Consumer Reports, October 2014: http://consumerreports.org/cro/2012/01/save-gas-and-money-with-a-manual-transmission/index.htm
-
-Hypothesis: 
-
-- Manual should help mpg
-- Manual may have correlation with "qsec" if acceleration is better
-- Manual may have correlation with "wt" 
-- Automatic + High Gears may beat Manual for MPG, so their may be some interesting outliers.  It is also possible that there is an "interaction" between weight and gears that needs researched, since low weight and low gears may be interesting comparison
+Manual transmission should help mpg (based on Consumer Reports research)
 
 ```{r eda_am, cache=TRUE}
-#...Show the overall view
-par(mfrow=c(1,1))
+fit <- lm(mpg ~ am, mtcars)
+summary(fit)$r.squared
+par(mfrow=c(1,1),mar=c(8,5,8,5))
 boxplot(mtcars$mpg~mtcars$am,names=c("Automatic","Manual"))
-
-#...Look at average MPG for manual and automatic
-aggregate(mtcars$mpg, list(mtcars$am), mean)
-
-#...show the model performance
-fit <- lm(mpg ~ drat + am, mtcars)
-par(mfrow=c(2,2))
-plot(fit)
-summary(fit)
-
-par(mfrow=c(1,1))
-plot( mtcars$drat, mtcars$mpg )
-abline(fit)
-
-
 ```
 
+####carb :: Number of carburetors
 
-###gear :: Number of forward gears
+Number of carbs decreases fuel efficiency
 
-Hypothesis: Based on research about higher gears, this may show interesting results for automatics with high number of gears
-
-Findings:
-
-- Automatic Transmissions with 4 gears have similar mean as manual transmission with 5 gears, so our hypothesis is not verified
-- Manual Transmissions with similar gear count (4) have higher mean mpg
-
-```{r eda_gear, cache=TRUE}
-aggregate(mtcars$mpg, list(paste(mtcars$gear,'_',mtcars$am)), mean)
-```
-
-
-
-###carb :: Number of carburetors
-
-```{r eda_carb, cache=TRUE}
+```{r eda_carb, cache=TRUE, echo=FALSE}
 fit <- lm(mpg ~ carb, mtcars)
-par(mfrow=c(2,2))
-plot(fit)
-summary(fit)
+par(mfrow=c(1,2),mar=c(0,5,15,0))
+plot(fit, which=c(1,2))
+```
+
+####vs :: V-shaped or Straight (Inline) engine shape
+
+Inline engine increases fuel efficiency
+
+```{r eda_vs, cache=TRUE, echo=FALSE}
+fit <- lm(mpg ~ vs, mtcars)
+par(mfrow=c(1,2),mar=c(0,5,15,0))
+plot(fit, which=c(1,2))
+```
+
+
+## Modeling
+
+### Remove Heteroskedastic, Colinear, and Uncorrelated variables
+
+- Coefficients match intuition, but P-values for T-stats are much to large to give confidence
+- Variance Inflation Factors are also reasonably large
+
+```{r model_1, cache=TRUE}
+mtcars_1 <- mtcars[,c("mpg","drat","vs","am","gear","carb")]
+model_1 <- lm(mpg ~ ., mtcars_1)
+```
+
+
+### (Selected Model) Remove Gear and Drat due to correlation
+
+- Coefficients match research and individual trends
+- p-values and variable inflation factors are appropriately small
+- No significant colinearity issues
+- No Heteroskedasticity issues
+
+```{r model_3, cache=TRUE}
+mtcars_3 <- mtcars[,c("mpg","vs","am","carb")]
+model_3 <- lm(mpg ~ ., mtcars_3)
+s <- summary(model_3)
+s$coefficients
+s$r.squared
+sqrt(vif(model_3))
+```
+
+
+### Remove VS since it correlates with am and carb
+
+Thoughts :: R^2 took a dive, so removing VS was not necessary
+
+```{r model_5, cache=TRUE, echo=FALSE}
+mtcars_5 <- mtcars[,c("mpg","am","carb")]
+model_5 <- lm(mpg ~ ., mtcars_5)
+summary(model_5)$r.squared
 ```
 
 
 
-
-```{r}
-
-```
 
 
 
