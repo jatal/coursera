@@ -1,0 +1,166 @@
+---
+title: "RegressionModels_CourseProject"
+author: "Craig Rowley"
+date: "December 19, 2014"
+output: html_document
+---
+
+# Original Assignment text
+
+##Context
+
+You work for Motor Trend, a magazine about the automobile industry. Looking at a data set of a collection of cars, they are interested in exploring the relationship between a set of variables and miles per gallon (MPG) (outcome). They are particularly interested in the following two questions:
+
+- Question 1 :: “Is an automatic or manual transmission better for MPG”
+- Question 2 :: "Quantify the MPG difference between automatic and manual transmissions"
+
+
+# Exploratory Data Analysis
+
+##Initialize data set and display some standard EDA
+```{r init_eda, cache=TRUE}
+data(mtcars)
+summary(mtcars)
+
+require(graphics)
+pairs(mtcars)
+```
+
+##Understand the data available to us
+
+###mpg ::	Miles/(US) gallon
+
+Our Dependent Variable.
+
+###cyl :: Number of cylinders
+
+
+
+###disp :: Displacement (cu.in.)
+
+
+
+###hp :: Gross horsepower
+
+
+
+###drat :: Rear axle ratio
+
+\# of revolutions the Transmission will make to turn the rear axle (wheel) one time.
+- Hypothesis: the more turns, the more potential friction, so less turns should have higher mpg
+- Observations: Below shows that drat may be a good regressor as Residuals have approximately a zero mean, our qq-plot shows good relationship, our student suggests there may be an outlier or two, and not significant cooks distance.
+
+Some Research:
+“For typical combined city/highway and city (stop and go) driving), fuel economy is insensitive to final drive ratio,” says Clark.  Optional final drive ratios do have an impact on typical highway driving (steady state driving above 60 mph).”
+“Speed, acceleration, loading and maintenance all impact fuel economy more than final-drive ratio,” says Clark. “For example, driving 10mph faster on the highway can reduce fuel economy by up to 4mpg.”
+
+- http://www.hardworkingtrucks.com/understanding-axle-ratios/
+
+
+```{r eda_drat, cache=TRUE}
+fit <- lm(mpg ~ drat, mtcars)
+par(mfrow=c(2,2))
+plot(fit)
+par(mfrow=c(1,1))
+plot(mtcars$drat,mtcars$mpg)
+abline(fit)
+summary(fit)
+```
+
+###wt :: Weight (lb/1000)
+
+Weight of vehicle expressed in units of 1k lbs
+
+- Hypothesis: Newton's first law says that the force required to accelerate a vehicle is proportional to its mass, so a weight should have a negative correlation with mpg.
+- Observations: Weight residual plot shows non-random U-shape, QQ plot indicates light tails
+- Conclusion: a linear model based on weight alone is innappropriate
+
+```{r eda_wt, cache=TRUE}
+fit <- lm(mpg ~ wt, mtcars)
+par(mfrow=c(2,2))
+plot(fit)
+```
+
+
+###qsec :: 1/4 mile time
+
+
+
+###vs :: V/S
+
+
+
+###am :: Transmission (0 = automatic, 1 = manual)
+
+Our required regressor for Question 2.
+
+Research:
+"In our tests, we've found that in some cars a manual transmission can improve gas mileage by a significant 2 to 5 mpg, compared with an automatic"
+"Manual transmissions often can also improve acceleration, sometimes significantly. That can be a welcome benefit with a smaller engine"
+" In a few cases, however, the latest automatic-transmission designs, including six-speed automatics, actually surpass their manual counterparts."
+
+- Consumer Reports, October 2014: http://consumerreports.org/cro/2012/01/save-gas-and-money-with-a-manual-transmission/index.htm
+
+Hypothesis: 
+
+- Manual should help mpg
+- Manual may have correlation with "qsec" if acceleration is better
+- Manual may have correlation with "wt" 
+- Automatic + High Gears may beat Manual for MPG, so their may be some interesting outliers.  It is also possible that there is an "interaction" between weight and gears that needs researched, since low weight and low gears may be interesting comparison
+
+```{r eda_am, cache=TRUE}
+#...Show the overall view
+par(mfrow=c(1,1))
+boxplot(mtcars$mpg~mtcars$am,names=c("Automatic","Manual"))
+
+#...Look at average MPG for manual and automatic
+aggregate(mtcars$mpg, list(mtcars$am), mean)
+
+#...show the model performance
+fit <- lm(mpg ~ drat + am, mtcars)
+par(mfrow=c(2,2))
+plot(fit)
+summary(fit)
+
+par(mfrow=c(1,1))
+plot( mtcars$drat, mtcars$mpg )
+abline(fit)
+
+
+```
+
+
+###gear :: Number of forward gears
+
+Hypothesis: Based on research about higher gears, this may show interesting results for automatics with high number of gears
+
+Findings:
+
+- Automatic Transmissions with 4 gears have similar mean as manual transmission with 5 gears, so our hypothesis is not verified
+- Manual Transmissions with similar gear count (4) have higher mean mpg
+
+```{r eda_gear, cache=TRUE}
+aggregate(mtcars$mpg, list(paste(mtcars$gear,'_',mtcars$am)), mean)
+```
+
+
+
+###carb :: Number of carburetors
+
+```{r eda_carb, cache=TRUE}
+fit <- lm(mpg ~ carb, mtcars)
+par(mfrow=c(2,2))
+plot(fit)
+summary(fit)
+```
+
+
+
+
+```{r}
+
+```
+
+
+
+
