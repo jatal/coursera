@@ -14,16 +14,63 @@ You work for Motor Trend, a magazine about the automobile industry. Looking at a
 - Question 1 :: “Is an automatic or manual transmission better for MPG”
 - Question 2 :: "Quantify the MPG difference between automatic and manual transmissions"
 
+##Approach
+
+Model Discovery and Selection)
+
+- EDA and Univariate fits to discover any heteroskedasticity (HSK) issues
+- Baseline "kitchen sink" model with Removal of HSK vars
+- Simple Multivariate (n-Continuous + 1-Categorical)
+- Select of maximum R^2
+
+Answer questions)
+
+- Follow hunger example for comparing two populations (manual and automatic transmission)
+
+
+
 
 # Exploratory Data Analysis
 
 ##Initialize data set and display some standard EDA
+
+Thoughts on Correlation:
+
+- MPG is positively correlated with Manual transmission (am), Rear-axle ratio (drat), and an Inline engine (vs)
+- MPG is negatively correlated with Vehicle weight (wt), Engine Displacement (disp), Cylinder count(cyl), and Horsepower (hp)
+- MPG is lightly correlated with Gear count (gear), Carbuerator count (carb), and Quarter-mile time (qsec)
+- Weight may have colinearity with  issues with Gear count, Transmission type, and Rear-axle ratio
+- Engine Displacement may have correlation
+
+Thoughts on Coefficients (grain of salt required - this is a kitchen sink model, after all) :
+
+- Increased Weight, Carbuerator count, and Horsepower result in less MPG (matches intuition)
+- Increased Displacement, Straight engine, More gears, Rear axle ratio, and Manual transmission result in higher MPG (matches intuition)
+- The coefficients of Quarter-mile time and Cylinders do "not" match intuition as both should likely have negative impact on MPG
+
+Thoughts on Colinearity :
+
+- Variance inflation factors all reasonably high, indicating problems (we expect this for a kitchen sink model)
+- Weight is correlated with most items on the list
+
+
 ```{r init_eda, cache=TRUE}
 data(mtcars)
 summary(mtcars)
 
-require(graphics)
-pairs(mtcars)
+#...Visually show correlation
+library(corrgram)
+corrgram(mtcars, order=TRUE, lower.panel=panel.shade, upper.panel=panel.pts, text.panel=panel.txt, main="")
+#...Numerically show most correlated
+sort( cor(mtcars)[,1] )
+#...Baseline "kitchen sink" model 
+fit <- lm(mpg ~ ., mtcars)
+sort(fit$coefficients)
+#...Investigate Colinearity
+library(car)
+sqrt( vif(fit) )
+#...Use Correlation to investigate possible colinearity causes
+sort(abs(cor(mtcars)["wt",]),decreasing=TRUE)
 ```
 
 ##Understand the data available to us
@@ -34,11 +81,30 @@ Our Dependent Variable.
 
 ###cyl :: Number of cylinders
 
+Larger, more powerful vehicles typically have more cylinders.  More cylinders typically means more fuel-per-second consumed in modern cars (and more horsepower).  
 
+Hypothesis:
+
+- Number of cyliders will have negative correlation with MPG
+- cyl will correlate with horsepower
+
+```{r eda_cyl, cache=TRUE}
+#...Look at some broad correlation
+#...Convert cylinder to factor
+mtcars$cyl <- factor(mtcars$cyl)
+#...Model and output interesting EDA
+fit <- lm(mpg ~ cyl -1, mtcars)
+summary(fit)
+par(mfrow=c(2,2))
+plot(fit, which=c(1,2))
+plot(mtcars$cyl,mtcars$mpg)
+
+
+```
 
 ###disp :: Displacement (cu.in.)
 
-
+Engine displacement is the volume swept by all the pistons inside the cylinders of a reciprocating engine in a single movement from top dead centre (TDC) to bottom dead centre (BDC). - Wikipedia
 
 ###hp :: Gross horsepower
 
@@ -86,8 +152,9 @@ plot(fit)
 
 
 
-###vs :: V/S
+###vs :: V/S (0 = V-engine, 1 = Straight)
 
+V or Straight-engine. 
 
 
 ###am :: Transmission (0 = automatic, 1 = manual)
