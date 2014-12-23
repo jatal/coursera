@@ -18,7 +18,7 @@ Our analysis shows that a manual transmission correlates with increased fuel eff
 
 ### Quantify the MPG difference between automatic and manual transmissions.
 
-Using a model that considers only engine type (V or Inline) and the number of Carburetors, we can quantify the mpg increase attributable to a manual transmission.  If we train the same model on two mutually exclusive data sets (automatic versus manual transmission), we see that a *manual transmission get more than 7 mpg better fuel efficiency*.  Switching to an Inline engine has a more positive effect on automatics (+4.34 mpg), but that is insufficient to overtake the manual transmission.  In fact, our model suggests that a manual transmission could opt for more power by switching to a V-engine and dual Carbs and still likely outperform the fuel efficiency of the average automatic (if they weren't racing or hauling loads).
+Using a model that considers only engine type (V or Inline) and the number of Carburetors, we can quantify the mpg increase attributable to a manual transmission.  If we train the same model on two mutually exclusive data sets (automatic versus manual transmission), we see that a *manual transmission gets more than 7 mpg better fuel efficiency*.  Switching to an Inline engine has a more positive effect on automatics (+4.34 mpg), but that is insufficient to overtake the manual transmission.  In fact, our model suggests that a manual transmission could opt for more power by switching to a V-engine and dual Carbs and still likely outperform the fuel efficiency of the average automatic (if they weren't racing or hauling loads).
 
 ```{r q2, cache=TRUE}
 at <- mtcars[mtcars$am==0,c("mpg","vs","carb")]; lm_at <- lm(mpg ~ ., at)
